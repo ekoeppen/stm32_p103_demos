@@ -59,6 +59,7 @@ DEMOS += uart_echo
 DEMOS += uart_echo_int
 DEMOS += uart_repeat_write
 DEMOS += uart_repeat_write_int
+DEMOS += logic_analyzer
 
 # List all demo folders
 DEMO_FOLDERS = $(addprefix demos/,$(DEMOS))
@@ -240,3 +241,8 @@ demos/uart_echo_int/main.elf: $(COMMON_FILES)
 demos/uart_repeat_write_int/main.elf: demos/uart_repeat_write_int/main.c
 demos/uart_repeat_write_int/main.elf: $(COMMON_FILES)
 	$(CC) $(CFLAGS_LINK) -Idemos/uart_repeat_write_int/ -o $@ $^
+
+
+demos/logic_analyzer/main.elf: demos/logic_analyzer/main.c
+demos/logic_analyzer/main.elf: $(COMMON_FILES)
+	$(CC) $(CFLAGS_LINK) -Idemos/logic_analyzer/ -o $@ $^

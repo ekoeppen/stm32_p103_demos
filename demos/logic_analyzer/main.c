@@ -42,10 +42,12 @@ void delay(uint32_t n)
 uint32_t samples[32];
 uint32_t samples_count;
 
+/*
 void SysTick_Handler(void)
 {
     samples[samples_count++] = 0x10000000;
 }
+*/
 
 int main(void)
 {
@@ -57,13 +59,15 @@ int main(void)
     init_button();
     init_rs232();
     USART_Cmd(USART2, ENABLE);
-   
+
     SysTick->LOAD = 0x00ffffff;
     SysTick->VAL = 0;
     SysTick->CTRL = SysTick_CTRL_ENABLE_Msk | SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk;
 
     while (1) {
         send_string("Ready.\r\n");
+        samples_count = sampler(samples, ARRAY_COUNT(samples));
+/*
         for (samples_count = 0; samples_count < ARRAY_COUNT(samples);  ) {
             input_state = (GPIOC->IDR & 0x00000100) << 16;
             if (GPIOA->IDR & 0x00000001) break;
@@ -72,6 +76,7 @@ int main(void)
                 old_state = input_state;
             }
         }
+*/
         send_string("Done.\r\n");
         for (t0 = 0, i = 0; i < samples_count; i++) {
             send_hex((samples[i] & 0xff000000) >> 24);

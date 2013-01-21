@@ -243,6 +243,6 @@ demos/uart_repeat_write_int/main.elf: $(COMMON_FILES)
 	$(CC) $(CFLAGS_LINK) -Idemos/uart_repeat_write_int/ -o $@ $^
 
 
-demos/logic_analyzer/main.elf: demos/logic_analyzer/sampler.S demos/logic_analyzer/main.c
+demos/logic_analyzer/main.elf: demos/logic_analyzer/sampler.s demos/logic_analyzer/main.c
 demos/logic_analyzer/main.elf: $(COMMON_FILES)
 	$(CC) $(CFLAGS_LINK) -Idemos/logic_analyzer/ -o $@ $^

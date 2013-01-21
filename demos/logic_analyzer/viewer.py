@@ -15,8 +15,32 @@ def update_scale_factor(value):
         pixel_per_microsecond = float(value)
         scale_factor = frequency / (pixel_per_microsecond * 1000000.0)
 
+def plot(f, x_offset, y_offset, mask, color):
+	global canvas, timer_interval, scale_factor
+	t = 0
+	x = x_offset
+	y = y_offset
+	for line in f:
+		what = (int(line, 16) >> 24) & 0xff
+		timestamp = timer_interval - (int(line, 16) & 0x00ffffff)
+		if what & 0x80:
+			t += timer_interval
+		else:
+			x0 = x
+			y0 = y
+			if what & mask:
+				y = y_offset
+			else:
+				y = y_offset + 50
+			if t == 0:
+				t = -timestamp
+			x = (t + timestamp) / scale_factor + x_offset
+			canvas.create_line(x0, y0, x, y0, fill=color)
+			canvas.create_line(x, y0, x, y, fill=color)
+
 frequency = 72000000.0
-update_scale_factor(100)
+update_scale_factor(10)
+timer_interval = 0x01000000
 
 root = Tk()
 cursor_pos = StringVar()
@@ -41,5 +65,13 @@ cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "black", dash = (4, 4)
 cursor_pos.set("Pos: %.3fµs" % 0.0)
 scale.set(pixel_per_microsecond)
 scale.config(command = update_scale_factor)
+
+f = open("/tmp/values")
+plot(f, 0, 50, 0x08, "red")
+f.close()
+
+f = open("/tmp/values")
+plot(f, 0, 55, 0x02, "black")
+f.close()
 
 root.mainloop()

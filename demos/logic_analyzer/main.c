@@ -4,8 +4,6 @@
 #include "stm32f10x.h"
 #include "stm32_p103.h"
 
-#define USE_C
-
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(a[0]))
 
 void send_byte(uint8_t b)
@@ -44,13 +42,6 @@ void delay(uint32_t n)
 uint32_t samples[32];
 uint32_t samples_count;
 
-#ifdef USE_C
-void SysTick_Handler(void)
-{
-    samples[samples_count++] = 0x80000000;
-}
-#endif
-
 int main(void)
 {
     int input_state, old_state = 0;
@@ -62,25 +53,10 @@ int main(void)
     init_rs232();
     USART_Cmd(USART2, ENABLE);
 
-    SysTick->LOAD = 0x00ffffff;
-    SysTick->VAL = 0;
-    SysTick->CTRL = SysTick_CTRL_ENABLE_Msk | SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk;
-
     while (1) {
-        send_string("Ready.\r\n");
-#ifdef USE_C
-        for (samples_count = 0; samples_count < ARRAY_COUNT(samples);  ) {
-            input_state = (GPIOC->IDR & 0x0000007f) << 24;
-            if (GPIOA->IDR & 0x00000001) break;
-            if (input_state ^ old_state) {
-                samples[samples_count++] = SysTick->VAL | input_state;
-                old_state = input_state;
-            }
-        }
-#else
+        send_string("START\r\n");
         samples_count = sampler(samples, ARRAY_COUNT(samples));
-#endif
-        send_string("Done.\r\n");
+        send_string("STOP\r\n");
         for (t0 = 0, i = 0; i < samples_count; i++) {
             send_hex(samples[i]);
             send_string("\r\n");

@@ -4,6 +4,8 @@
 #include "stm32f10x.h"
 #include "stm32_p103.h"
 
+#define USE_C
+
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(a[0]))
 
 void send_byte(uint8_t b)
@@ -42,12 +44,12 @@ void delay(uint32_t n)
 uint32_t samples[32];
 uint32_t samples_count;
 
-/*
+#ifdef USE_C
 void SysTick_Handler(void)
 {
-    samples[samples_count++] = 0x10000000;
+    samples[samples_count++] = 0x80000000;
 }
-*/
+#endif
 
 int main(void)
 {
@@ -66,30 +68,21 @@ int main(void)
 
     while (1) {
         send_string("Ready.\r\n");
-        samples_count = sampler(samples, ARRAY_COUNT(samples));
-/*
+#ifdef USE_C
         for (samples_count = 0; samples_count < ARRAY_COUNT(samples);  ) {
-            input_state = (GPIOC->IDR & 0x00000100) << 16;
+            input_state = (GPIOC->IDR & 0x0000007f) << 24;
             if (GPIOA->IDR & 0x00000001) break;
             if (input_state ^ old_state) {
                 samples[samples_count++] = SysTick->VAL | input_state;
                 old_state = input_state;
             }
         }
-*/
+#else
+        samples_count = sampler(samples, ARRAY_COUNT(samples));
+#endif
         send_string("Done.\r\n");
         for (t0 = 0, i = 0; i < samples_count; i++) {
-            send_hex((samples[i] & 0xff000000) >> 24);
-            send_byte(' ');
-            if (samples[i] & 0x10000000) {
-                send_hex(0x10000000);
-            } else {
-                t = SysTick->LOAD - (samples[i] & 0x00ffffff);
-                send_hex(t);
-                send_byte(' ');
-                send_hex(t - t0);
-                t0 = t;
-            }
+            send_hex(samples[i]);
             send_string("\r\n");
         }
     }

@@ -59,7 +59,12 @@ load.pack(side = RIGHT, padx = 5, pady = 5)
 
 canvas = Canvas(root, bg = "gray", width = 800, height = 480)
 canvas.pack(fill = BOTH, expand = 1)
+hbar = Scrollbar(root, orient = HORIZONTAL)
+hbar.pack(fill = X)
+hbar.config(command = canvas.xview)
+canvas.config(xscrollcommand = hbar.set)
 canvas.bind("<Motion>", track_mouse)
+
 cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "black", dash = (4, 4))
 
 cursor_pos.set("Pos: %.3fµs" % 0.0)

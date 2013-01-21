@@ -1,5 +1,3 @@
-/* vim: set expandtab ts=4 sw=4 */
-
 #define USE_STDPERIPH_DRIVER
 #include "stm32f10x.h"
 #include "stm32_p103.h"
@@ -8,11 +6,14 @@
 
 void send_byte(uint8_t b)
 {
-    /* Send one byte */
     USART_SendData(USART2, b);
-
-    /* Loop until USART2 DR register is empty */
     while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+}
+
+uint8_t read_byte(void)
+{
+    while(USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET);
+    return USART_ReceiveData(USART2);
 }
 
 void send_string(uint8_t *string)
@@ -34,13 +35,82 @@ void send_hex(uint32_t n)
     }
 }
 
+uint32_t read_long(void)
+{
+    return read_byte() + (read_byte() << 8) + (read_byte() << 16) + (read_byte() << 24);
+}
+
 void delay(uint32_t n)
 {
     while (n--) ;
 }
 
-uint32_t samples[32];
+uint32_t samples[1024];
 uint32_t samples_count;
+
+void start_sampling(void)
+{
+    samples_count = sampler(samples, ARRAY_COUNT(samples));
+    send_samples();
+}
+
+void send_samples(void)
+{
+    int i, j, b;
+    uint32_t sample, last_sample;
+    uint32_t t, sample_t;
+    uint32_t timer;
+
+    t = 0;
+    timer = 0;
+    for (i = 0; i < ARRAY_COUNT(samples); i++) {
+        sample = samples[i];
+
+        if (sample & 0x80000000) {
+            timer++;
+        } else {
+            sample_t = ((0x01000000 - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
+
+            while (t < sample_t) {
+                send_byte((last_sample >> 24) & 0x7f);
+                t++;
+            }
+            send_byte((sample >> 24) & 0x7f);
+            last_sample = sample;
+        }
+    }
+}
+
+void sump_handler(void)
+{
+    uint8_t command;
+
+    while (1) {
+        command = read_byte();
+        switch (command) {
+        case 0x00: break;
+        case 0x01: start_sampling(); break;
+        case 0x02: send_string("1ALS"); break;
+        case 0x11: break;
+        case 0x13: break;
+        case 0xc0:
+        case 0xc4:
+        case 0xc8:
+        case 0xcc: read_long(); break;
+        case 0xc1:
+        case 0xc5:
+        case 0xc9:
+        case 0xcd: read_long(); break;
+        case 0xc2:
+        case 0xc6:
+        case 0xca:
+        case 0xce: read_long(); break;
+        case 0x80: read_long(); break;
+        case 0x81: read_long(); break;
+        case 0x82: read_long(); break;
+        }
+    }
+}
 
 int main(void)
 {
@@ -52,14 +122,5 @@ int main(void)
     init_button();
     init_rs232();
     USART_Cmd(USART2, ENABLE);
-
-    while (1) {
-        send_string("START\r\n");
-        samples_count = sampler(samples, ARRAY_COUNT(samples));
-        send_string("STOP\r\n");
-        for (t0 = 0, i = 0; i < samples_count; i++) {
-            send_hex(samples[i]);
-            send_string("\r\n");
-        }
-    }
+    sump_handler();
 }

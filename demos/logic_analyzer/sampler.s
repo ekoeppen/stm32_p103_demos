@@ -6,9 +6,9 @@ sampler:
         mov r9, r0
         mov r10, r1
         mov r7, #0
-        ldr r1, =0x40011008     // GPIOC->IDR
-        ldr r2, =0x40010808     // GPIOA->IDR
-        ldr r3, =0xe000e018     // STCURRENT
+        ldr r1, =0x40011008     @ GPIOC->IDR
+        ldr r2, =0x40010808     @ GPIOA->IDR
+        ldr r3, =0xe000e018     @ STCURRENT
 
 sample_loop:
         ldr r5, [r1]

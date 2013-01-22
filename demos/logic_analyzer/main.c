@@ -121,6 +121,6 @@ int main(void)
     init_led();
     init_button();
     init_rs232();
-    USART_Cmd(USART2, ENABLE);
+    enable_rs232();
     sump_handler();
 }

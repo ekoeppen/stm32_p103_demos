@@ -70,55 +70,87 @@ void enable_button_interrupts(void)
     NVIC_Init(&NVIC_InitStructure);
 }
 
-void init_rs232(void)
+void init_usart(USART_TypeDef *uart, int speed)
 {
     USART_InitTypeDef USART_InitStructure;
     GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_TypeDef *gpio;
+    uint16_t USART_Rx_Pin, USART_Tx_Pin;
 
-    /* Enable peripheral clocks. */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+    if (uart == USART1) {
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+        gpio = GPIOA;
+        USART_Rx_Pin = GPIO_Pin_10;
+        USART_Tx_Pin = GPIO_Pin_9;
+    } else if (uart == USART2) {
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+        gpio = GPIOA;
+        USART_Rx_Pin = GPIO_Pin_3;
+        USART_Tx_Pin = GPIO_Pin_2;
+    } else if (uart == USART3) {
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+        gpio = GPIOB;
+        USART_Rx_Pin = GPIO_Pin_3;
+        USART_Tx_Pin = GPIO_Pin_2;
+    }
 
-    /* Configure USART2 Rx pin as floating input. */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+    /* Configure Rx pin as floating input. */
+    GPIO_InitStructure.GPIO_Pin = USART_Rx_Pin;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(gpio, &GPIO_InitStructure);
 
-    /* Configure USART2 Tx as alternate function push-pull. */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    /* Configure Tx as alternate function push-pull. */
+    GPIO_InitStructure.GPIO_Pin = USART_Tx_Pin;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(gpio, &GPIO_InitStructure);
 
-    /* Configure the USART2 */
-    USART_InitStructure.USART_BaudRate = 115200;
+    /* Configure the USART */
+    USART_InitStructure.USART_BaudRate = speed;
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
     USART_InitStructure.USART_StopBits = USART_StopBits_1;
     USART_InitStructure.USART_Parity = USART_Parity_No;
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
     USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_Init(USART2, &USART_InitStructure);
-    USART_Cmd(USART2, ENABLE);
+    USART_Init(uart, &USART_InitStructure);
 }
 
-void enable_rs232_interrupts(void)
+void enable_usart_interrupts(USART_TypeDef *uart)
 {
     NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Enable transmit and receive interrupts for the USART2. */
-    USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
-    USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+    USART_ITConfig(uart, USART_IT_TXE, DISABLE);
+    USART_ITConfig(uart, USART_IT_RXNE, ENABLE);
 
-    /* Enable the USART2 IRQ in the NVIC module (so that the USART2 interrupt
-     * handler is enabled). */
-    NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+    if (uart == USART1) NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+    else if (uart == USART2) NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+    else if (uart == USART3) NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 }
 
-void enable_rs232(void)
+void enable_usart(USART_TypeDef *uart)
 {
     /* Enable the RS232 port. */
-    USART_Cmd(USART2, ENABLE);
+    USART_Cmd(uart, ENABLE);
+}
+
+void init_rs232(void)
+{
+    init_usart(USART2, 9600);
+}
+
+void enable_rs232_interrupts(void)
+{
+    enable_usart_interrupts(USART2);
+}
+
+void enable_rs232(void)
+{
+    enable_usart(USART2);
 }

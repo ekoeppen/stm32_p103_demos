@@ -1,6 +1,8 @@
 #ifndef __STM32_P103_H
 #define __STM32_P103_H
 
+#include "stm32f10x.h"
+
 /* This library contains routines for interfacing with the STM32 P103 board. */
 
 /* Initialize the LED (the board only has one). */
@@ -22,5 +24,11 @@ void init_rs232(void);
 void enable_rs232_interrupts(void);
 
 void enable_rs232(void);
+
+void init_usart(USART_TypeDef *uart, int speed);
+
+void enable_usart_interrupts(USART_TypeDef *uart);
+
+void enable_usart(USART_TypeDef *uart);
 
 #endif /* __STM32_P103_H */

@@ -45,7 +45,7 @@ void delay(uint32_t n)
     while (n--) ;
 }
 
-uint32_t samples[1024];
+uint32_t samples[128];
 uint32_t samples_count;
 
 void send_samples(void)
@@ -78,7 +78,17 @@ void send_samples(void)
 void start_sampling(void)
 {
     samples_count = sampler(samples, ARRAY_COUNT(samples));
+    send_string(USART1, "Sample count: ");
+    send_hex(USART1, samples_count);
+    send_string(USART1, "\r\n");
     send_samples();
+}
+
+void generic_long_command()
+{
+    uint32_t parameter;
+
+    parameter = read_long(USART2); send_string(USART1, "Parameter: "); send_hex(USART1, parameter); send_string(USART1, "\r\n");
 }
 
 void sump_handler(void)
@@ -99,18 +109,18 @@ void sump_handler(void)
         case 0xc0:
         case 0xc4:
         case 0xc8:
-        case 0xcc: read_long(USART2); break;
+        case 0xcc:
         case 0xc1:
         case 0xc5:
         case 0xc9:
-        case 0xcd: read_long(USART2); break;
+        case 0xcd:
         case 0xc2:
         case 0xc6:
         case 0xca:
-        case 0xce: read_long(USART2); break;
-        case 0x80: read_long(USART2); break;
-        case 0x81: read_long(USART2); break;
-        case 0x82: read_long(USART2); break;
+        case 0xce:
+        case 0x80:
+        case 0x81:
+        case 0x82: generic_long_command(); break;
         }
     }
 }

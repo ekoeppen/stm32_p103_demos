@@ -113,7 +113,7 @@ void send_samples(void)
     timer = 0;
     reset_control = 0;
 
-#if 1
+#if 0
     for (i = 0; i < ARRAY_COUNT(samples) && !reset_control; i++) {
         sample = samples[i];
         if (sample & 0x80000000) {
@@ -132,19 +132,20 @@ void send_samples(void)
         }
     }
 #else
-    i = 0;
-    last_sample_t = 0;
+    i = 1;
     t = 0;
+    last_sample = samples[0];
+    last_sample_t = ((0x00ffffff - (last_sample & 0x00ffffff)) / 72) + timer * 0x01000000;
     while (i < ARRAY_COUNT(samples) && !reset_control) {
-        if (t < last_sample_t) {
+        if (t <= last_sample_t) {
             send_byte(USART2, (last_sample >> 24) & 0x7f);
             t++;
         } else {
             if (samples[i] & 0x80000000) {
                 timer++;
             } else {
-                last_sample_t = ((0x00ffffff - (samples[i] & 0x00ffffff)) / 72) + timer * 0x01000000;
                 last_sample = samples[i];
+                last_sample_t = ((0x00ffffff - (last_sample & 0x00ffffff)) / 72) + timer * 0x01000000;
             }
             i++;
         }

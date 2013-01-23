@@ -7,6 +7,8 @@
 int32_t usart1_rcv_char = -1;
 int32_t usart2_rcv_char = -1;
 volatile uint32_t reset_control;
+uint32_t samples[1024];
+uint32_t samples_count;
 
 void USART1_IRQHandler(void)
 {
@@ -75,34 +77,50 @@ uint32_t read_long_int(USART_TypeDef *uart)
     return read_byte_int(uart) + (read_byte_int(uart) << 8) + (read_byte_int(uart) << 16) + (read_byte_int(uart) << 24);
 }
 
+void print_samples(void)
+{
+    int i;
+    uint32_t timer;
+
+    for (timer =0, i = 0; i < ARRAY_COUNT(samples) && !reset_control; i++) {
+        if (samples[i] & 0x80000000) {
+            timer++;
+        }
+        send_hex(USART1, samples[i]);
+        send_byte(USART1, ' ');
+        send_hex(USART1, ((0x00ffffff - (samples[i] & 0x00ffffff)) / 72) + timer * 0x01000000);
+        send_string(USART1, "\r\n");
+    }
+}
+
 void delay(uint32_t n)
 {
     while (n--) ;
 }
 
-uint32_t samples[1024];
-uint32_t samples_count;
-
 void send_samples(void)
 {
     int i, j, b;
     uint32_t sample, last_sample;
-    uint32_t t, prev_t, sample_t;
+    uint32_t t, prev_t, last_sample_t;
     uint32_t timer;
 
     send_string(USART1, "Sending samples.\r\n");
+    i = 0;
     t = 0;
+    last_sample_t = 0;
     prev_t = 0xffffffff;
     timer = 0;
     reset_control = 0;
+
+#if 1
     for (i = 0; i < ARRAY_COUNT(samples) && !reset_control; i++) {
         sample = samples[i];
-
         if (sample & 0x80000000) {
             timer++;
         } else {
-            sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
-            while (t < sample_t && !reset_control) {
+            last_sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
+            while (t < last_sample_t && !reset_control) {
                 send_byte(USART2, (last_sample >> 24) & 0x7f);
                 t++;
             }
@@ -110,11 +128,28 @@ void send_samples(void)
                 send_byte(USART2, (sample >> 24) & 0x7f);
                 last_sample = sample;
                 prev_t = t;
-            } else {
-                send_byte(USART2, (last_sample >> 24) & 0x7f);
             }
         }
     }
+#else
+    i = 0;
+    last_sample_t = 0;
+    t = 0;
+    while (i < ARRAY_COUNT(samples) && !reset_control) {
+        if (t < last_sample_t) {
+            send_byte(USART2, (last_sample >> 24) & 0x7f);
+            t++;
+        } else {
+            if (samples[i] & 0x80000000) {
+                timer++;
+            } else {
+                last_sample_t = ((0x00ffffff - (samples[i] & 0x00ffffff)) / 72) + timer * 0x01000000;
+                last_sample = samples[i];
+            }
+            i++;
+        }
+    }
+#endif
     send_string(USART1, "Sending done.\r\n");
 }
 

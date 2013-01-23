@@ -22,13 +22,14 @@ sampler:
         add r8, r0
         ldr r1, =0x40011008
         ldr r3, =0xe000e010
-        
+
         @ reset reset control flag
         mov r0, #0
         str r0, [r2]
-        
+
         @ wait for trigger (first changed sample)
         ldr r7, [r1]
+        and r7, #0x7f
 trigger:
         ldr r5, [r1]
         and r5, #0x7f
@@ -40,6 +41,12 @@ trigger:
         str r0, [r3, #8]
         ldr r0, =0x00ffffff
         str r0, [r3, #4]
+
+        lsl r7, #24
+        orr r7, r0
+        str r7, [r9], #4
+        mov r7, r5
+
         lsl r5, #24
         orr r5, r0
         str r5, [r9], #4
@@ -68,7 +75,7 @@ sample_end:
         @ stop SYSTICK
         mov r0, #0
         str r0, [r3]
-        
+
         lsl r9, #1
         lsr r9, #1
         sub r0, r9, r4

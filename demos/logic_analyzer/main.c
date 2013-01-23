@@ -4,6 +4,23 @@
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(a[0]))
 
+int32_t usart1_rcv_char = -1;
+int32_t usart2_rcv_char = -1;
+volatile uint32_t reset_control;
+
+void USART1_IRQHandler(void)
+{
+    usart1_rcv_char = USART_ReceiveData(USART1);
+}
+
+void USART2_IRQHandler(void)
+{
+    usart2_rcv_char = USART_ReceiveData(USART2);
+    if (usart2_rcv_char == 0) {
+        reset_control = 1;
+    }
+}
+
 void send_byte(USART_TypeDef *uart, uint8_t b)
 {
     USART_SendData(uart, b);
@@ -14,6 +31,19 @@ uint8_t read_byte(USART_TypeDef *uart)
 {
     while(USART_GetFlagStatus(uart, USART_FLAG_RXNE) == RESET);
     return USART_ReceiveData(uart);
+}
+
+uint8_t read_byte_int(USART_TypeDef *uart)
+{
+    int32_t *c;
+    uint8_t r;
+
+    if (uart == USART1) c = &usart1_rcv_char;
+    else if (uart == USART2) c = &usart2_rcv_char;
+    while (*c == -1) __WFI();
+    r = *c & 0xff;
+    *c = -1;
+    return r;
 }
 
 void send_string(USART_TypeDef *uart, uint8_t *string)
@@ -40,46 +70,62 @@ uint32_t read_long(USART_TypeDef *uart)
     return read_byte(uart) + (read_byte(uart) << 8) + (read_byte(uart) << 16) + (read_byte(uart) << 24);
 }
 
+uint32_t read_long_int(USART_TypeDef *uart)
+{
+    return read_byte_int(uart) + (read_byte_int(uart) << 8) + (read_byte_int(uart) << 16) + (read_byte_int(uart) << 24);
+}
+
 void delay(uint32_t n)
 {
     while (n--) ;
 }
 
-uint32_t samples[128];
+uint32_t samples[1024];
 uint32_t samples_count;
 
 void send_samples(void)
 {
     int i, j, b;
     uint32_t sample, last_sample;
-    uint32_t t, sample_t;
+    uint32_t t, prev_t, sample_t;
     uint32_t timer;
 
+    send_string(USART1, "Sending samples.\r\n");
     t = 0;
+    prev_t = 0xffffffff;
     timer = 0;
-    for (i = 0; i < ARRAY_COUNT(samples); i++) {
+    reset_control = 0;
+    for (i = 0; i < ARRAY_COUNT(samples) && !reset_control; i++) {
         sample = samples[i];
 
         if (sample & 0x80000000) {
             timer++;
         } else {
-            sample_t = ((0x01000000 - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
-
-            while (t < sample_t) {
+            sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
+            while (t < sample_t && !reset_control) {
                 send_byte(USART2, (last_sample >> 24) & 0x7f);
                 t++;
             }
-            send_byte(USART2, (sample >> 24) & 0x7f);
-            last_sample = sample;
+            if (t != prev_t) {
+                send_byte(USART2, (sample >> 24) & 0x7f);
+                last_sample = sample;
+                prev_t = t;
+            } else {
+                send_byte(USART2, (last_sample >> 24) & 0x7f);
+            }
         }
     }
+    send_string(USART1, "Sending done.\r\n");
 }
 
 void start_sampling(void)
 {
-    samples_count = sampler(samples, ARRAY_COUNT(samples));
-    send_string(USART1, "Sample count: ");
+    send_string(USART1, "Start sampling.\r\n");
+    samples_count = sampler(samples, ARRAY_COUNT(samples), &reset_control);
+    send_string(USART1, "Sampling done, count: ");
     send_hex(USART1, samples_count);
+    send_string(USART1, " control: ");
+    send_hex(USART1, reset_control);
     send_string(USART1, "\r\n");
     send_samples();
 }
@@ -88,7 +134,10 @@ void generic_long_command()
 {
     uint32_t parameter;
 
-    parameter = read_long(USART2); send_string(USART1, "Parameter: "); send_hex(USART1, parameter); send_string(USART1, "\r\n");
+    parameter = read_long_int(USART2);
+    send_string(USART1, "Parameter: ");
+    send_hex(USART1, parameter);
+    send_string(USART1, "\r\n");
 }
 
 void sump_handler(void)
@@ -96,7 +145,7 @@ void sump_handler(void)
     uint8_t command;
 
     while (1) {
-        command = read_byte(USART2);
+        command = read_byte_int(USART2);
         send_string(USART1, "Got command: ");
         send_hex(USART1, command);
         send_string(USART1, "\r\n");
@@ -133,9 +182,13 @@ int main(void)
 
     init_led();
     init_button();
+
     init_usart(USART1, 115200);
+    enable_usart_interrupts(USART1);
     enable_usart(USART1);
+
     init_usart(USART2, 115200);
+    enable_usart_interrupts(USART2);
     enable_usart(USART2);
 
     send_string(USART1, "Ready.\r\n");

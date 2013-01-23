@@ -5,7 +5,7 @@
 sampler:
         @ r0: working register
         @ r1: GPIOC IDR (input for sampling)
-        @ r2: GPIOA IDR (button state)
+        @ r2: reset control (used to stop sampling)
         @ r3: SYSTICK counter
         @ r4: start of sample buffer
         @ r5: current sample
@@ -21,9 +21,12 @@ sampler:
         lsl r8, #2
         add r8, r0
         ldr r1, =0x40011008
-        ldr r2, =0x40010808
         ldr r3, =0xe000e010
-
+        
+        @ reset reset control flag
+        mov r0, #0
+        str r0, [r2]
+        
         @ wait for trigger (first changed sample)
         ldr r7, [r1]
 trigger:
@@ -48,7 +51,7 @@ sample_loop:
         cmp r9, r8
         bge sample_end
         ldr r5, [r2]
-        ands r5, #1
+        cmp r5, #0
         bne sample_end
         ldr r5, [r1]
         and r5, #0x7f
@@ -62,6 +65,12 @@ sample_loop:
         cmp r9, r8
         blt sample_loop
 sample_end:
+        @ stop SYSTICK
+        mov r0, #0
+        str r0, [r3]
+        
+        lsl r9, #1
+        lsr r9, #1
         sub r0, r9, r4
         lsr r0, #2
         pop {r1-r9, pc}

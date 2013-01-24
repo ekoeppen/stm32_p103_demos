@@ -88,7 +88,7 @@ void print_samples(void)
         }
         send_hex(USART1, samples[i]);
         send_byte(USART1, ' ');
-        send_hex(USART1, ((0x00ffffff - (samples[i] & 0x00ffffff)) / 72) + timer * 0x01000000);
+        send_hex(USART1, ((0x00ffffff - (samples[i] & 0x00ffffff)) / 36) + timer * 0x01000000);
         send_string(USART1, "\r\n");
     }
 }
@@ -113,13 +113,12 @@ void send_samples(void)
     timer = 0;
     reset_control = 0;
 
-#if 0
     for (i = 0; i < ARRAY_COUNT(samples) && !reset_control; i++) {
         sample = samples[i];
         if (sample & 0x80000000) {
             timer++;
         } else {
-            last_sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
+            last_sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 36) + timer * 0x01000000;
             while (t < last_sample_t && !reset_control) {
                 send_byte(USART2, (last_sample >> 24) & 0x7f);
                 t++;
@@ -131,26 +130,6 @@ void send_samples(void)
             }
         }
     }
-#else
-    i = 1;
-    t = 0;
-    last_sample = samples[0];
-    last_sample_t = ((0x00ffffff - (last_sample & 0x00ffffff)) / 72) + timer * 0x01000000;
-    while (i < ARRAY_COUNT(samples) && !reset_control) {
-        if (t <= last_sample_t) {
-            send_byte(USART2, (last_sample >> 24) & 0x7f);
-            t++;
-        } else {
-            if (samples[i] & 0x80000000) {
-                timer++;
-            } else {
-                last_sample = samples[i];
-                last_sample_t = ((0x00ffffff - (last_sample & 0x00ffffff)) / 72) + timer * 0x01000000;
-            }
-            i++;
-        }
-    }
-#endif
     send_string(USART1, "Sending done.\r\n");
 }
 

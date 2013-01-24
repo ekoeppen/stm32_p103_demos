@@ -35,17 +35,13 @@ trigger:
         and r5, #0x7f
         teq r5, r7
         beq trigger
+        mov r7, r5
 
         @ set up SYSTICK and store initial sample
         mov r0, #0
         str r0, [r3, #8]
         ldr r0, =0x00ffffff
         str r0, [r3, #4]
-
-        lsl r7, #24
-        orr r7, r0
-        str r7, [r9], #4
-        mov r7, r5
 
         lsl r5, #24
         orr r5, r0

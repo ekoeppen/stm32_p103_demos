@@ -102,13 +102,13 @@ void send_samples(void)
 {
     int i, j, b;
     uint32_t sample, last_sample;
-    uint32_t t, prev_t, last_sample_t;
+    uint32_t t, prev_t, sample_t;
     uint32_t timer;
 
     send_string(USART1, "Sending samples.\r\n");
     i = 0;
     t = 0;
-    last_sample_t = 0;
+    sample_t = 0;
     prev_t = 0xffffffff;
     timer = 0;
     reset_control = 0;
@@ -118,8 +118,8 @@ void send_samples(void)
         if (sample & 0x80000000) {
             timer++;
         } else {
-            last_sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 36) + timer * 0x01000000;
-            while (t < last_sample_t && !reset_control) {
+            sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 36) + timer * 0x01000000;
+            while (t < sample_t && !reset_control) {
                 send_byte(USART2, (last_sample >> 24) & 0x7f);
                 t++;
             }

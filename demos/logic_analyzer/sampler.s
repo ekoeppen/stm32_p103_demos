@@ -31,6 +31,9 @@ sampler:
         ldr r7, [r1]
         and r7, #0x7f
 trigger:
+        ldr r0, [r2]
+        cmp r0, #0
+        bne sample_end
         ldr r5, [r1]
         and r5, #0x7f
         teq r5, r7

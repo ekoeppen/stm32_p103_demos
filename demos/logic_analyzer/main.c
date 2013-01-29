@@ -4,12 +4,22 @@
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(a[0]))
 
+#define RESET_CMD 0x01
+#define BUTTON_PRESSED 0x02
+
 int32_t usart1_rcv_char = -1;
 int32_t usart2_rcv_char = -1;
 volatile uint32_t reset_control;
-uint32_t samples[1024];
+uint32_t samples[2048];
 uint32_t samples_count;
 
+void EXTI0_IRQHandler(void)
+{
+    if(EXTI_GetITStatus(EXTI_Line0) != RESET) {
+        reset_control |= BUTTON_PRESSED;
+        EXTI_ClearITPendingBit(EXTI_Line0);
+    }
+}
 void USART1_IRQHandler(void)
 {
     usart1_rcv_char = USART_ReceiveData(USART1);
@@ -19,7 +29,7 @@ void USART2_IRQHandler(void)
 {
     usart2_rcv_char = USART_ReceiveData(USART2);
     if (usart2_rcv_char == 0) {
-        reset_control = 1;
+        reset_control |= RESET_CMD;
     }
 }
 
@@ -159,6 +169,7 @@ void send_samples(void)
 void start_sampling(void)
 {
     log("Start sampling.\r\n");
+    memset(samples, ARRAY_COUNT(samples), 0);
     samples_count = sampler(samples, ARRAY_COUNT(samples), &reset_control);
     log("Sampling done, count: ");
     log_hex(samples_count);
@@ -220,6 +231,7 @@ int main(void)
 
     init_led();
     init_button();
+    enable_button_interrupts();
     init_log();
 
     init_usart(USART2, 115200);

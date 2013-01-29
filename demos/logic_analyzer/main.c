@@ -169,8 +169,10 @@ void send_samples(void)
 void start_sampling(void)
 {
     log("Start sampling.\r\n");
+    GPIOC->BRR = 0x00001000;
     memset(samples, ARRAY_COUNT(samples), 0);
     samples_count = sampler(samples, ARRAY_COUNT(samples), &reset_control);
+    GPIOC->BSRR = 0x00001000;
     log("Sampling done, count: ");
     log_hex(samples_count);
     log(" control: ");

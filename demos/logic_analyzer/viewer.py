@@ -71,11 +71,11 @@ cursor_pos.set("Pos: %.3fµs" % 0.0)
 scale.set(pixel_per_microsecond)
 scale.config(command = update_scale_factor)
 
-f = open("/tmp/values")
-plot(f, 0, 50, 0x08, "red")
+f = open(sys.argv[1])
+plot(f, 0, 50, 0x01, "red")
 f.close()
 
-f = open("/tmp/values")
+f = open(sys.argv[1])
 plot(f, 0, 55, 0x02, "black")
 f.close()
 

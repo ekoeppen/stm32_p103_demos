@@ -77,6 +77,28 @@ uint32_t read_long_int(USART_TypeDef *uart)
     return read_byte_int(uart) + (read_byte_int(uart) << 8) + (read_byte_int(uart) << 16) + (read_byte_int(uart) << 24);
 }
 
+void init_log(void)
+{
+    init_usart(USART1, 115200);
+    enable_usart_interrupts(USART1);
+    enable_usart(USART1);
+}
+
+void log(char *str)
+{
+    send_string(USART1, str);
+}
+
+void log_nl()
+{
+    log("\r\n");
+}
+
+void log_hex(uint32_t n)
+{
+    send_hex(USART1, n);
+}
+
 void print_samples(void)
 {
     int i;
@@ -86,10 +108,10 @@ void print_samples(void)
         if (samples[i] & 0x80000000) {
             timer++;
         }
-        send_hex(USART1, samples[i]);
+        log_hex(samples[i]);
         send_byte(USART1, ' ');
-        send_hex(USART1, ((0x00ffffff - (samples[i] & 0x00ffffff)) / 36) + timer * 0x01000000);
-        send_string(USART1, "\r\n");
+        log_hex(((0x00ffffff - (samples[i] & 0x00ffffff)) / 72) + timer * 0x01000000);
+        log("\r\n");
     }
 }
 
@@ -105,7 +127,8 @@ void send_samples(void)
     uint32_t t, prev_t, sample_t;
     uint32_t timer;
 
-    send_string(USART1, "Sending samples.\r\n");
+    print_samples();
+    log("Sending samples.\r\n");
     i = 0;
     t = 0;
     sample_t = 0;
@@ -118,7 +141,7 @@ void send_samples(void)
         if (sample & 0x80000000) {
             timer++;
         } else {
-            sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 36) + timer * 0x01000000;
+            sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
             while (t < sample_t && !reset_control) {
                 send_byte(USART2, (last_sample >> 24) & 0x7f);
                 t++;
@@ -130,18 +153,18 @@ void send_samples(void)
             }
         }
     }
-    send_string(USART1, "Sending done.\r\n");
+    log("Sending done.\r\n");
 }
 
 void start_sampling(void)
 {
-    send_string(USART1, "Start sampling.\r\n");
+    log("Start sampling.\r\n");
     samples_count = sampler(samples, ARRAY_COUNT(samples), &reset_control);
-    send_string(USART1, "Sampling done, count: ");
-    send_hex(USART1, samples_count);
-    send_string(USART1, " control: ");
-    send_hex(USART1, reset_control);
-    send_string(USART1, "\r\n");
+    log("Sampling done, count: ");
+    log_hex(samples_count);
+    log(" control: ");
+    log_hex(reset_control);
+    log("\r\n");
     send_samples();
 }
 
@@ -150,9 +173,9 @@ void generic_long_command()
     uint32_t parameter;
 
     parameter = read_long_int(USART2);
-    send_string(USART1, "Parameter: ");
-    send_hex(USART1, parameter);
-    send_string(USART1, "\r\n");
+    log("Parameter: ");
+    log_hex(parameter);
+    log("\r\n");
 }
 
 void sump_handler(void)
@@ -161,9 +184,9 @@ void sump_handler(void)
 
     while (1) {
         command = read_byte_int(USART2);
-        send_string(USART1, "Got command: ");
-        send_hex(USART1, command);
-        send_string(USART1, "\r\n");
+        log("Got command: ");
+        log_hex(command);
+        log("\r\n");
         switch (command) {
         case 0x00: break;
         case 0x01: start_sampling(); break;
@@ -197,15 +220,12 @@ int main(void)
 
     init_led();
     init_button();
-
-    init_usart(USART1, 115200);
-    enable_usart_interrupts(USART1);
-    enable_usart(USART1);
+    init_log();
 
     init_usart(USART2, 115200);
     enable_usart_interrupts(USART2);
     enable_usart(USART2);
 
-    send_string(USART1, "Ready.\r\n");
+    log("Ready.\r\n");
     sump_handler();
 }

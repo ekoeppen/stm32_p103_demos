@@ -57,7 +57,7 @@ cursor_label.pack(side = LEFT, padx = 10)
 quit.pack(side = RIGHT)
 load.pack(side = RIGHT, padx = 5, pady = 5)
 
-canvas = Canvas(root, bg = "gray", width = 800, height = 480)
+canvas = Canvas(root, bg = "gray", width = 800, height = 480, scrollregion = (0, 0, 800000, 480))
 canvas.pack(fill = BOTH, expand = 1)
 hbar = Scrollbar(root, orient = HORIZONTAL)
 hbar.pack(fill = X)

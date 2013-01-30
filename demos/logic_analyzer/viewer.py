@@ -3,17 +3,25 @@
 
 from Tkinter import *
 
-def load():
-        return 0
+def load_samples():
+	global cursor_line
+	canvas.delete(ALL)
+	cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "black", dash = (4, 4))
+	f = open(sys.argv[1])
+	plot(f, 0, 50, 0x01, "red")
+	f.close()
+	f = open(sys.argv[1])
+	plot(f, 0, 55, 0x02, "black")
+	f.close()
 
 def track_mouse(event):
-        canvas.coords(cursor_line, event.x, 0, event.x, 10000)
-        cursor_pos.set("Pos: %.3fµs" % (event.x /  pixel_per_microsecond))
+        canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
+        cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
 
 def update_scale_factor(value):
         global pixel_per_microsecond, scale_factor
         pixel_per_microsecond = float(value)
-        scale_factor = frequency / (pixel_per_microsecond * 1000000.0)
+        scale_factor = frequency / (pixel_per_microsecond * 10000.0)
 
 def plot(f, x_offset, y_offset, mask, color):
 	global canvas, timer_interval, scale_factor
@@ -39,7 +47,7 @@ def plot(f, x_offset, y_offset, mask, color):
 			canvas.create_line(x, y0, x, y, fill=color)
 
 frequency = 72000000.0
-update_scale_factor(10)
+update_scale_factor(1)
 timer_interval = 0x01000000
 
 root = Tk()
@@ -48,10 +56,10 @@ cursor_pos = StringVar()
 topframe = Frame(root)
 topframe.pack()
 
-scale = Scale(topframe, orient = "horizontal", length = 400, resolution = 10, from_ = 10, to = 500)
+scale = Scale(topframe, orient = "horizontal", length = 400, from_ = 1, to = 1000)
 cursor_label = Label(topframe, textvariable = cursor_pos)
 quit = Button(topframe, text = "Quit", command = quit)
-load = Button(topframe, text = "Reload", command = load)
+load = Button(topframe, text = "Reload", command = load_samples)
 scale.pack(side = LEFT, fill = X, expand = 1)
 cursor_label.pack(side = LEFT, padx = 10)
 quit.pack(side = RIGHT)
@@ -65,18 +73,11 @@ hbar.config(command = canvas.xview)
 canvas.config(xscrollcommand = hbar.set)
 canvas.bind("<Motion>", track_mouse)
 
-cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "black", dash = (4, 4))
 
-cursor_pos.set("Pos: %.3fµs" % 0.0)
+cursor_pos.set("Pos: %.0fµs" % 0.0)
 scale.set(pixel_per_microsecond)
 scale.config(command = update_scale_factor)
 
-f = open(sys.argv[1])
-plot(f, 0, 50, 0x01, "red")
-f.close()
-
-f = open(sys.argv[1])
-plot(f, 0, 55, 0x02, "black")
-f.close()
+load_samples()
 
 root.mainloop()

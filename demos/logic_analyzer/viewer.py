@@ -5,7 +5,6 @@ from Tkinter import *
 
 def load_samples():
 	global cursor_line, last_x
-	scrollpos = canvas.canvasx(0) * 100 / pixel_per_microsecond
 	last_x = 0
 	canvas.delete(ALL)
 	cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "green", dash = (4, 4))
@@ -17,7 +16,6 @@ def load_samples():
 	f.close()
 	canvas.config(width = last_x)
 	canvas.config(scrollregion = (0, 0, last_x, 480))
-	canvas.xview_moveto(scrollpos / int(canvas['width']))
 
 def track_mouse(event):
         canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
@@ -32,10 +30,15 @@ def next_level_change(event):
 	print("Right edge: %d %.0f, item: %d" % (edge, edge * 100 / pixel_per_microsecond, c))
 	print(canvas.coords(c)[0])
 
-def update_scale_factor(value):
-        global pixel_per_microsecond, scale_factor
-        pixel_per_microsecond = float(value)
-        scale_factor = frequency / (pixel_per_microsecond * 10000.0)
+def scale_factor():
+	return frequency / (pixel_per_microsecond * 10000.0)
+
+def rescale_canvas(value):
+        global pixel_per_microsecond
+	old_scrollpos = canvas.canvasx(0) / int(canvas['width'])
+	pixel_per_microsecond = float(value)
+	load_samples()
+	canvas.xview_moveto(old_scrollpos)
 
 def plot(f, x_offset, y_offset, mask, color):
 	global canvas, timer_interval, scale_factor, last_x
@@ -56,15 +59,16 @@ def plot(f, x_offset, y_offset, mask, color):
 				y = y_offset + 50
 			if t == 0:
 				t = -timestamp
-			x = (t + timestamp) / scale_factor + x_offset
+			x = (t + timestamp) / scale_factor() + x_offset
 			canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
 			canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
 	last_x = max(x, last_x)
 
 frequency = 72000000.0
-update_scale_factor(1)
 timer_interval = 0x01000000
+pixel_per_microsecond = 1
 left_edge = 0
+report_scale_events = True
 
 root = Tk()
 cursor_pos = StringVar()
@@ -93,10 +97,10 @@ canvas.bind("<Motion>", track_mouse)
 root.bind("n", next_level_change)
 root.bind("q", lambda e: exit())
 root.bind("r", lambda e: load_samples())
+scale.bind("<ButtonRelease-1>", lambda e: rescale_canvas(scale.get()))
 
 cursor_pos.set("Pos: %.0fµs" % 0.0)
 scale.set(pixel_per_microsecond)
-scale.config(command = update_scale_factor)
 
 load_samples()
 

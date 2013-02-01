@@ -5,6 +5,7 @@
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof(a[0]))
 
 #define RESET_CMD 0x01
+#define DIVIDER 16
 #define BUTTON_PRESSED 0x02
 
 int32_t usart1_rcv_char = -1;
@@ -120,7 +121,7 @@ void print_samples(void)
         }
         log_hex(samples[i]);
         send_byte(USART1, ' ');
-        log_hex(((0x00ffffff - (samples[i] & 0x00ffffff)) / 72) + timer * 0x01000000);
+        log_hex(((0x00ffffff - (samples[i] & 0x00ffffff)) / DIVIDER) + timer * 0x01000000);
         log("\r\n");
     }
 }
@@ -137,7 +138,6 @@ void send_samples(void)
     uint32_t t, prev_t, sample_t;
     uint32_t timer;
 
-    print_samples();
     log("Sending samples.\r\n");
     i = 0;
     t = 0;
@@ -151,7 +151,7 @@ void send_samples(void)
         if (sample & 0x80000000) {
             timer++;
         } else {
-            sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / 72) + timer * 0x01000000;
+            sample_t = ((0x00ffffff - (sample & 0x00ffffff)) / DIVIDER) + timer * 0x01000000;
             while (t < sample_t && !reset_control) {
                 send_byte(USART2, (last_sample >> 24) & 0x7f);
                 t++;

@@ -22,13 +22,16 @@ def track_mouse(event):
         cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
 
 def next_level_change(event):
+	smallest_x = int(canvas['width'])
+	n = -1
 	edge = canvas.canvasx(0) + root.winfo_width()
 	for c in canvas.find_withtag(ALL):
-		print(canvas.coords(c)[0])
-		if canvas.coords(c)[0] > edge:
-			break
-	print("Right edge: %d %.0f, item: %d" % (edge, edge * 100 / pixel_per_microsecond, c))
-	print(canvas.coords(c)[0])
+		x = canvas.coords(c)[0]
+		if x > edge and x < smallest_x:
+			smallest_x = x
+			n = c
+	if n != -1:
+		canvas.xview_moveto(canvas.coords(n)[0] / int(canvas['width']))
 
 def scale_factor():
 	return frequency / (pixel_per_microsecond * 10000.0)

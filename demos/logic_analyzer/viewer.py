@@ -71,8 +71,8 @@ def load_samples():
     canvas.config(scrollregion = (0, 0, last_x, 480))
 
 def track_mouse(event):
-        canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
-        cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
+    canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
+    cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
 
 def next_level_change(event):
     smallest_x = int(canvas['width'])

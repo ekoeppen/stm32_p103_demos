@@ -4,57 +4,57 @@
 from Tkinter import *
 
 class Channel:
-	def __init__(self):
-		self.samples = []
+    def __init__(self):
+        self.samples = []
 
-	def add_sample(self, value, timestamp):
-		self.samples.append((value, timestamp))
+    def add_sample(self, value, timestamp):
+        self.samples.append((value, timestamp))
 
-	def last_state(self):
-		if len(self.samples) > 0:
-			return self.samples[-1][0]
-		else:
-			return None
+    def last_state(self):
+        if len(self.samples) > 0:
+            return self.samples[-1][0]
+        else:
+            return None
 
-	def print_samples(self):
-		for s in self.samples:
-			print("%1d %10d" % (s[0], s[1]))
+    def print_samples(self):
+        for s in self.samples:
+            print("%1d %10d" % (s[0], s[1]))
 
 class LogicAnalyzer:
-	max_channels = 8
-	timer_interval = 0x01000000
-	frequency = 72000000
-	timebase = 1000000000
+    max_channels = 8
+    timer_interval = 0x01000000
+    frequency = 72000000
+    timebase = 1000000000
 
-	def __init__(self):
-		self.channels = []
-		for i in range(self.max_channels):
-			self.channels.append(Channel())
+    def __init__(self):
+        self.channels = []
+        for i in range(self.max_channels):
+            self.channels.append(Channel())
 
-	def normalize(self, timestamp):
-		return timestamp * (self.timebase / self.frequency)
+    def normalize(self, timestamp):
+        return timestamp * (self.timebase / self.frequency)
 
-	def load(self, filename):
-		f = open(filename)
-		t = 0
-		for line in f:
-			what = (int(line, 16) >> 24) & 0xff
-			timestamp = self.timer_interval - (int(line, 16) & 0x00ffffff)
-			if what & 0x80:
-				t += self.timer_interval
-			else:
-				m = 1
-				for i in range(len(self.channels)):
-					state = ((what & m) != 0)
-					if state != self.channels[i].last_state():
-						self.channels[i].add_sample(state, self.normalize(t + timestamp))
-					m <<= 1
-		f.close()
+    def load(self, filename):
+        f = open(filename)
+        t = 0
+        for line in f:
+            what = (int(line, 16) >> 24) & 0xff
+            timestamp = self.timer_interval - (int(line, 16) & 0x00ffffff)
+            if what & 0x80:
+                t += self.timer_interval
+            else:
+                m = 1
+                for i in range(len(self.channels)):
+                    state = ((what & m) != 0)
+                    if state != self.channels[i].last_state():
+                        self.channels[i].add_sample(state, self.normalize(t + timestamp))
+                    m <<= 1
+        f.close()
 
-	def print_channels(self):
-		for c in range(len(self.channels)):
-			print("Channel %d -----------------------------------------------------------" % c)
-			self.channels[c].print_samples()
+    def print_channels(self):
+        for c in range(len(self.channels)):
+            print("Channel %d -----------------------------------------------------------" % c)
+            self.channels[c].print_samples()
 
 def load_samples():
     global cursor_line, last_x

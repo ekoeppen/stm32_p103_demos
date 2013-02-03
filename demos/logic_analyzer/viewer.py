@@ -96,40 +96,31 @@ def rescale_canvas(value):
     load_samples()
     canvas.xview_moveto(old_scrollpos)
 
-def plot(f, x_offset, y_offset, mask, color):
+def plot(channel, x_offset, y_offset, color):
     global canvas, timer_interval, scale_factor, last_x
-    t = 0
     x = x_offset
     y = y_offset
-    for line in f:
-        what = (int(line, 16) >> 24) & 0xff
-        timestamp = timer_interval - (int(line, 16) & 0x00ffffff)
-        if what & 0x80:
-            t += timer_interval
+    for sample in channel.samples:
+        x0 = x
+        y0 = y
+        if sample[0]:
+            y = y_offset
         else:
-            x0 = x
-            y0 = y
-            if what & mask:
-                y = y_offset
-            else:
-                y = y_offset + 50
-            if t == 0:
-                t = -timestamp
-            x = (t + timestamp) / scale_factor() + x_offset
-            canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
-            canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
+            y = y_offset + 50
+        x = (sample[1]) / scale_factor() + x_offset
+        canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
+        canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
     last_x = max(x, last_x)
-
-analyzer = LogicAnalyzer()
-analyzer.load(sys.argv[1])
-analyzer.print_channels()
-exit()
 
 frequency = 72000000.0
 timer_interval = 0x01000000
 pixel_per_microsecond = 1
 left_edge = 0
 report_scale_events = True
+last_x = 0
+
+analyzer = LogicAnalyzer()
+analyzer.load(sys.argv[1])
 
 root = Tk()
 cursor_pos = StringVar()
@@ -163,6 +154,9 @@ scale.bind("<ButtonRelease-1>", lambda e: rescale_canvas(scale.get()))
 cursor_pos.set("Pos: %.0fµs" % 0.0)
 scale.set(pixel_per_microsecond)
 
-load_samples()
+channel_color = ["#e00000", "#a0a0a0", "white", "white", "white", "white", "white", "white"]
+
+for i in range(len(analyzer.channels)):
+    plot(analyzer.channels[i], 0, i * 50 + 10, channel_color[i])
 
 root.mainloop()

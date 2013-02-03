@@ -57,68 +57,68 @@ class LogicAnalyzer:
 			self.channels[c].print_samples()
 
 def load_samples():
-	global cursor_line, last_x
-	last_x = 0
-	canvas.delete(ALL)
-	cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "green", dash = (4, 4))
-	f = open(sys.argv[1])
-	plot(f, 0, 50, 0x01, "#e00000")
-	f.close()
-	f = open(sys.argv[1])
-	plot(f, 0, 55, 0x02, "#a0a0a0")
-	f.close()
-	canvas.config(width = last_x)
-	canvas.config(scrollregion = (0, 0, last_x, 480))
+    global cursor_line, last_x
+    last_x = 0
+    canvas.delete(ALL)
+    cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "green", dash = (4, 4))
+    f = open(sys.argv[1])
+    plot(f, 0, 50, 0x01, "#e00000")
+    f.close()
+    f = open(sys.argv[1])
+    plot(f, 0, 55, 0x02, "#a0a0a0")
+    f.close()
+    canvas.config(width = last_x)
+    canvas.config(scrollregion = (0, 0, last_x, 480))
 
 def track_mouse(event):
         canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
         cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
 
 def next_level_change(event):
-	smallest_x = int(canvas['width'])
-	n = -1
-	edge = canvas.canvasx(0) + root.winfo_width()
-	for c in canvas.find_withtag(ALL):
-		x = canvas.coords(c)[0]
-		if x > edge and x < smallest_x:
-			smallest_x = x
-			n = c
-	if n != -1:
-		canvas.xview_moveto(canvas.coords(n)[0] / int(canvas['width']))
+    smallest_x = int(canvas['width'])
+    n = -1
+    edge = canvas.canvasx(0) + root.winfo_width()
+    for c in canvas.find_withtag(ALL):
+        x = canvas.coords(c)[0]
+        if x > edge and x < smallest_x:
+            smallest_x = x
+            n = c
+    if n != -1:
+        canvas.xview_moveto(canvas.coords(n)[0] / int(canvas['width']))
 
 def scale_factor():
-	return frequency / (pixel_per_microsecond * 10000.0)
+    return frequency / (pixel_per_microsecond * 10000.0)
 
 def rescale_canvas(value):
         global pixel_per_microsecond
-	old_scrollpos = canvas.canvasx(0) / int(canvas['width'])
-	pixel_per_microsecond = float(value)
-	load_samples()
-	canvas.xview_moveto(old_scrollpos)
+    old_scrollpos = canvas.canvasx(0) / int(canvas['width'])
+    pixel_per_microsecond = float(value)
+    load_samples()
+    canvas.xview_moveto(old_scrollpos)
 
 def plot(f, x_offset, y_offset, mask, color):
-	global canvas, timer_interval, scale_factor, last_x
-	t = 0
-	x = x_offset
-	y = y_offset
-	for line in f:
-		what = (int(line, 16) >> 24) & 0xff
-		timestamp = timer_interval - (int(line, 16) & 0x00ffffff)
-		if what & 0x80:
-			t += timer_interval
-		else:
-			x0 = x
-			y0 = y
-			if what & mask:
-				y = y_offset
-			else:
-				y = y_offset + 50
-			if t == 0:
-				t = -timestamp
-			x = (t + timestamp) / scale_factor() + x_offset
-			canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
-			canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
-	last_x = max(x, last_x)
+    global canvas, timer_interval, scale_factor, last_x
+    t = 0
+    x = x_offset
+    y = y_offset
+    for line in f:
+        what = (int(line, 16) >> 24) & 0xff
+        timestamp = timer_interval - (int(line, 16) & 0x00ffffff)
+        if what & 0x80:
+            t += timer_interval
+        else:
+            x0 = x
+            y0 = y
+            if what & mask:
+                y = y_offset
+            else:
+                y = y_offset + 50
+            if t == 0:
+                t = -timestamp
+            x = (t + timestamp) / scale_factor() + x_offset
+            canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
+            canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
+    last_x = max(x, last_x)
 
 analyzer = LogicAnalyzer()
 analyzer.load(sys.argv[1])

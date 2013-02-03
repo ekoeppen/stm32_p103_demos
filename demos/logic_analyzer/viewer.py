@@ -90,7 +90,7 @@ def scale_factor():
     return frequency / (pixel_per_microsecond * 10000.0)
 
 def rescale_canvas(value):
-        global pixel_per_microsecond
+    global pixel_per_microsecond
     old_scrollpos = canvas.canvasx(0) / int(canvas['width'])
     pixel_per_microsecond = float(value)
     load_samples()

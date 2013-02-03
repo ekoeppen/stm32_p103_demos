@@ -18,8 +18,8 @@ def load_samples():
     canvas.config(scrollregion = (0, 0, last_x, 480))
 
 def track_mouse(event):
-        canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
-        cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
+    canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
+    cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
 
 def next_level_change(event):
     smallest_x = int(canvas['width'])
@@ -37,7 +37,7 @@ def scale_factor():
     return frequency / (pixel_per_microsecond * 10000.0)
 
 def rescale_canvas(value):
-        global pixel_per_microsecond
+    global pixel_per_microsecond
     old_scrollpos = canvas.canvasx(0) / int(canvas['width'])
     pixel_per_microsecond = float(value)
     load_samples()

@@ -70,10 +70,6 @@ def load_samples():
     canvas.config(width = last_x)
     canvas.config(scrollregion = (0, 0, last_x, 480))
 
-def track_mouse(event):
-    canvas.coords(cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
-    cursor_pos.set("Pos: %.0fµs" % ((canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
-
 def next_level_change(event):
     smallest_x = int(canvas['width'])
     n = -1
@@ -88,13 +84,6 @@ def next_level_change(event):
 
 def scale_factor():
     return frequency / (pixel_per_microsecond * 10000.0)
-
-def rescale_canvas(value):
-    global pixel_per_microsecond
-    old_scrollpos = canvas.canvasx(0) / int(canvas['width'])
-    pixel_per_microsecond = float(value)
-    load_samples()
-    canvas.xview_moveto(old_scrollpos)
 
 def plot(channel, x_offset, y_offset, color):
     global canvas, timer_interval, scale_factor, last_x
@@ -123,40 +112,52 @@ analyzer = LogicAnalyzer()
 analyzer.load(sys.argv[1])
 
 root = Tk()
-cursor_pos = StringVar()
 
-topframe = Frame(root)
-topframe.pack(fill = X)
+class Viewer:
 
-scale = Scale(topframe, orient = "horizontal", length = 400, from_ = 1, to = 1000)
-filler = Label(topframe)
-cursor_label = Label(topframe, textvariable = cursor_pos)
-quit = Button(topframe, text = "Quit", command = quit)
-load = Button(topframe, text = "Reload", command = load_samples)
-scale.pack(side = LEFT, fill = X, padx = 10)
-cursor_label.pack(side = LEFT, padx = 10)
-filler.pack(side = LEFT, expand = 1)
-quit.pack(side = LEFT)
-load.pack(side = LEFT, padx = 5, pady = 5)
+    def __init__(self, root):
+        self.cursor_pos = StringVar()
+        topframe = Frame(root)
+        topframe.pack(fill = X)
 
-canvas = Canvas(root, bg = "#003e4d", width = 800, height = 480, scrollregion = (0, 0, 800000, 480))
-canvas.pack(fill = BOTH, expand = 1)
-hbar = Scrollbar(root, orient = HORIZONTAL)
-hbar.pack(fill = X)
-hbar.config(command = canvas.xview)
-canvas.config(xscrollcommand = hbar.set)
-canvas.bind("<Motion>", track_mouse)
-root.bind("n", next_level_change)
-root.bind("q", lambda e: exit())
-root.bind("r", lambda e: load_samples())
-scale.bind("<ButtonRelease-1>", lambda e: rescale_canvas(scale.get()))
+        scale = Scale(topframe, orient = "horizontal", length = 400, from_ = 1, to = 1000)
+        scale.pack(side = LEFT, fill = X, padx = 10)
+        Label(topframe, textvariable = self.cursor_pos).pack(side = LEFT, padx = 10)
+        Label(topframe).pack(side = LEFT, expand = 1)
+        Button(topframe, text = "Quit", command = quit).pack(side = LEFT)
+        Button(topframe, text = "Reload", command = load_samples).pack(side = LEFT, padx = 5, pady = 5)
 
-cursor_pos.set("Pos: %.0fµs" % 0.0)
-scale.set(pixel_per_microsecond)
+        self.canvas = Canvas(root, bg = "#003e4d", width = 800, height = 480, scrollregion = (0, 0, 800000, 480))
+        self.canvas.pack(fill = BOTH, expand = 1)
+        hbar = Scrollbar(root, orient = HORIZONTAL)
+        hbar.pack(fill = X)
+        hbar.config(command = self.canvas.xview)
+        self.canvas.config(xscrollcommand = hbar.set)
+        self.canvas.bind("<Motion>", self.track_mouse)
+        scale.bind("<ButtonRelease-1>", lambda e: self.rescale_canvas(e.widget.get()))
+        self.cursor_pos.set("Pos: %.0fµs" % 0.0)
+        scale.set(pixel_per_microsecond)
+
+        root.bind("n", next_level_change)
+        root.bind("q", lambda e: exit())
+        root.bind("r", lambda e: load_samples())
+
+    def track_mouse(self, event):
+        self.canvas.set_cursor_line(self.canvas.canvasx(event.x), 0, self.canvas.canvasx(event.x))
+        self.cursor_pos.set("Pos: %.0fµs" % ((self.canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
+
+    def rescale_canvas(self, value):
+        global pixel_per_microsecond
+        old_scrollpos = self.canvas.canvasx(0) / int(self.canvas['width'])
+        pixel_per_microsecond = float(value)
+        load_samples()
+        self.canvas.xview_moveto(old_scrollpos)
+
+viewer = Viewer(root)
 
 channel_color = ["#e00000", "#a0a0a0", "white", "white", "white", "white", "white", "white"]
 
-for i in range(len(analyzer.channels)):
-    plot(analyzer.channels[i], 0, i * 50 + 10, channel_color[i])
+#for i in range(len(analyzer.channels)):
+#    plot(analyzer.channels[i], 0, i * 50 + 10, channel_color[i])
 
 root.mainloop()

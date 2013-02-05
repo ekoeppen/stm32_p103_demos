@@ -65,15 +65,17 @@ class ChannelView(Canvas):
     width = 800
     height = 480
     channel_colors = ["#e00000", "#a0a0a0", "white", "white", "white", "white", "white", "white"]
-    last_x = 0
 
-    def __init__(self, parent, delegate):
+    def __init__(self, parent, delegate, analyzer):
         Canvas.__init__(self, parent, bg = self.bg_color, width = self.width, height = self.height)
         self.delegate = delegate
+        self.analyzer = analyzer
+        self.last_x = 0
+        self.divider = 100000
         self.cursor_line = self.create_line(10, 0, 10, 10000, fill = "green", dash = (4, 4))
         self.bind("<Motion>", self.track_mouse)
 
-    def plot_channel(channel, x_offset, y_offset, color):
+    def plot_channel(self, channel, x_offset, y_offset, color):
         global scale_factor
         x = x_offset
         y = y_offset
@@ -84,35 +86,37 @@ class ChannelView(Canvas):
                 y = y_offset
             else:
                 y = y_offset + 50
-            x = (sample[1]) / self.scale_factor() + x_offset
-            self.create_line(x0, y0, x, y0, fill = color, width = 2)
-            self.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
+            x = (sample[1]) / self.divider + x_offset
+            self.create_line(x0, y0, x, y0, fill = color, width = 2, tags = "sample")
+            self.create_line(x, y0, x, y, fill = color, width = 2, tags = ("c", "sample"))
         self.last_x = max(x, self.last_x)
 
     def plot_channels(self):
-        self.delete(ALL)
-        for i in range(len(analyzer.channels)):
-            plot(analyzer.channels[i], 0, i * 50 + 10, channel_color[i])
+        self.delete("sample")
+        self.last_x = 0
+        for i in range(len(self.analyzer.channels)):
+            self.plot_channel(self.analyzer.channels[i], 0, i * 50 + 10, self.channel_colors[i])
         self.config(width = self.last_x)
         self.config(scrollregion = (0, 0, self.last_x, 480))
 
     def set_cursor_line(self, pos):
         self.coords(self.cursor_line, self.canvasx(pos), 0, self.canvasx(pos), 10000)
 
-    def scale_factor():
-        return frequency / (pixel_per_microsecond * 10000.0)
-
-    def event_x_to_global_x(self, x):
-        return self.canvasx(x)
-
     def track_mouse(self, event):
         self.set_cursor_line(event.x)
-        self.delegate.cursor_moved(self.canvasx(event.x))
+        self.delegate.cursor_moved(self.canvasx(event.x) * float(self.divider))
+
+    def rescale(self, value):
+        old_scrollpos = self.canvasx(0) / int(self['width'])
+        self.divider = 100000 / int(value)
+        self.plot_channels()
+        self.xview_moveto(old_scrollpos)
 
 class Viewer:
 
-    def __init__(self, parent):
+    def __init__(self, parent, analyzer):
         self.cursor_pos = StringVar()
+        self.analyzer = analyzer
         topframe = Frame(parent)
         topframe.pack(fill = X)
 
@@ -121,27 +125,24 @@ class Viewer:
         Label(topframe, textvariable = self.cursor_pos).pack(side = LEFT, padx = 10)
         Label(topframe).pack(side = LEFT, expand = 1)
         Button(topframe, text = "Quit", command = quit).pack(side = LEFT)
-        Button(topframe, text = "Reload", command = self.load_samples).pack(side = LEFT, padx = 5, pady = 5)
+        Button(topframe, text = "Reload", command = self.reload_samples).pack(side = LEFT, padx = 5, pady = 5)
 
-        self.channel_view = ChannelView(parent, self)
+        self.channel_view = ChannelView(parent, self, self.analyzer)
         self.channel_view.pack(fill = BOTH, expand = 1)
         hbar = Scrollbar(parent, orient = HORIZONTAL)
         hbar.pack(fill = X)
         hbar.config(command = self.channel_view.xview)
         self.channel_view.config(xscrollcommand = hbar.set)
-        scale.bind("<ButtonRelease-1>", lambda e: self.rescale_canvas(e.widget.get()))
+        scale.bind("<ButtonRelease-1>", lambda e: self.channel_view.rescale(e.widget.get()))
         self.cursor_pos.set("Pos: %.0fµs" % 0.0)
         scale.set(pixel_per_microsecond)
 
         parent.bind("n", self.next_level_change)
         parent.bind("q", lambda e: exit())
-        parent.bind("r", lambda e: self.load_samples())
+        parent.bind("r", lambda e: self.reload_samples())
 
     def cursor_moved(self, pos):
-        self.cursor_pos.set("Pos: %.0fµs" % (pos * 100 /  pixel_per_microsecond))
-
-    def load_samples():
-        None
+        self.cursor_pos.set("Pos: %.0fµs" % (pos / 1000, ))
 
     def next_level_change(self, event):
         smallest_x = int(self.canvas['width'])
@@ -155,17 +156,14 @@ class Viewer:
         if n != -1:
             self.canvas.xview_moveto(canvas.coords(n)[0] / int(self.canvas['width']))
 
-    def rescale_canvas(self, value):
-        global pixel_per_microsecond
-        old_scrollpos = self.canvas.canvasx(0) / int(self.canvas['width'])
-        pixel_per_microsecond = float(value)
-        # load_samples()
-        self.canvas.xview_moveto(old_scrollpos)
+    def reload_samples(self):
+        None
 
 root = Tk()
 
 analyzer = LogicAnalyzer()
 analyzer.load(sys.argv[1])
-viewer = Viewer(root)
+viewer = Viewer(root, analyzer)
+viewer.channel_view.plot_channels()
 
 root.mainloop()

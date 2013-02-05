@@ -56,6 +56,33 @@ class LogicAnalyzer:
             print("Channel %d -----------------------------------------------------------" % c)
             self.channels[c].print_samples()
 
+class ChannelView:
+
+    bg_color = "#003e4d"
+    width = 800
+    height = 480
+    channel_colors = ["#e00000", "#a0a0a0", "white", "white", "white", "white", "white", "white"]
+    last_x = 0
+
+    def __init__(self, parent):
+        self.canvas = Canvas(parent, bg = self.bg_color, width = self.width, height = self.height)
+
+    def plot_channel(channel, x_offset, y_offset, color):
+        global scale_factor
+        x = x_offset
+        y = y_offset
+        for sample in channel.samples:
+            x0 = x
+            y0 = y
+            if sample[0]:
+                y = y_offset
+            else:
+                y = y_offset + 50
+            x = (sample[1]) / scale_factor() + x_offset
+            self.canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
+            self.canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
+        self.last_x = max(x, self.last_x)
+
 def load_samples():
     global cursor_line, last_x
     last_x = 0
@@ -95,22 +122,6 @@ def rescale_canvas(value):
     pixel_per_microsecond = float(value)
     load_samples()
     canvas.xview_moveto(old_scrollpos)
-
-def plot(channel, x_offset, y_offset, color):
-    global canvas, timer_interval, scale_factor, last_x
-    x = x_offset
-    y = y_offset
-    for sample in channel.samples:
-        x0 = x
-        y0 = y
-        if sample[0]:
-            y = y_offset
-        else:
-            y = y_offset + 50
-        x = (sample[1]) / scale_factor() + x_offset
-        canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
-        canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
-    last_x = max(x, last_x)
 
 frequency = 72000000.0
 timer_interval = 0x01000000
@@ -154,7 +165,6 @@ scale.bind("<ButtonRelease-1>", lambda e: rescale_canvas(scale.get()))
 cursor_pos.set("Pos: %.0fµs" % 0.0)
 scale.set(pixel_per_microsecond)
 
-channel_color = ["#e00000", "#a0a0a0", "white", "white", "white", "white", "white", "white"]
 
 for i in range(len(analyzer.channels)):
     plot(analyzer.channels[i], 0, i * 50 + 10, channel_color[i])

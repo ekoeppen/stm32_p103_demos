@@ -3,6 +3,10 @@
 
 from Tkinter import *
 
+frequency = 72000000.0
+timer_interval = 0x01000000
+pixel_per_microsecond = 1
+
 class Channel:
     def __init__(self):
         self.samples = []
@@ -65,6 +69,7 @@ class ChannelView:
 
     def __init__(self, parent):
         self.canvas = Canvas(parent, bg = self.bg_color, width = self.width, height = self.height)
+        self.cursor_line = self.canvas.create_line(10, 0, 10, 10000, fill = "green", dash = (4, 4))
 
     def plot_channel(channel, x_offset, y_offset, color):
         global scale_factor
@@ -77,51 +82,23 @@ class ChannelView:
                 y = y_offset
             else:
                 y = y_offset + 50
-            x = (sample[1]) / scale_factor() + x_offset
+            x = (sample[1]) / self.scale_factor() + x_offset
             self.canvas.create_line(x0, y0, x, y0, fill = color, width = 2)
             self.canvas.create_line(x, y0, x, y, fill = color, width = 2, tags = "c")
         self.last_x = max(x, self.last_x)
 
-def load_samples():
-    global cursor_line, last_x
-    last_x = 0
-    canvas.delete(ALL)
-    cursor_line = canvas.create_line(10, 0, 10, 10000, fill = "green", dash = (4, 4))
-    f = open(sys.argv[1])
-    plot(f, 0, 50, 0x01, "#e00000")
-    f.close()
-    f = open(sys.argv[1])
-    plot(f, 0, 55, 0x02, "#a0a0a0")
-    f.close()
-    canvas.config(width = last_x)
-    canvas.config(scrollregion = (0, 0, last_x, 480))
+    def plot_channels(self):
+        self.canvas.delete(ALL)
+        for i in range(len(analyzer.channels)):
+            plot(analyzer.channels[i], 0, i * 50 + 10, channel_color[i])
+        self.canvas.config(width = self.last_x)
+        self.canvas.config(scrollregion = (0, 0, self.last_x, 480))
 
-def next_level_change(event):
-    smallest_x = int(canvas['width'])
-    n = -1
-    edge = canvas.canvasx(0) + root.winfo_width()
-    for c in canvas.find_withtag(ALL):
-        x = canvas.coords(c)[0]
-        if x > edge and x < smallest_x:
-            smallest_x = x
-            n = c
-    if n != -1:
-        canvas.xview_moveto(canvas.coords(n)[0] / int(canvas['width']))
+    def set_cursor_line(self, pos):
+        self.canvas.coords(self.cursor_line, canvas.canvasx(event.x), 0, canvas.canvasx(event.x), 10000)
 
-def scale_factor():
-    return frequency / (pixel_per_microsecond * 10000.0)
-
-frequency = 72000000.0
-timer_interval = 0x01000000
-pixel_per_microsecond = 1
-left_edge = 0
-report_scale_events = True
-last_x = 0
-
-analyzer = LogicAnalyzer()
-analyzer.load(sys.argv[1])
-
-root = Tk()
+    def scale_factor():
+        return frequency / (pixel_per_microsecond * 10000.0)
 
 class Viewer:
 
@@ -135,7 +112,7 @@ class Viewer:
         Label(topframe, textvariable = self.cursor_pos).pack(side = LEFT, padx = 10)
         Label(topframe).pack(side = LEFT, expand = 1)
         Button(topframe, text = "Quit", command = quit).pack(side = LEFT)
-        Button(topframe, text = "Reload", command = load_samples).pack(side = LEFT, padx = 5, pady = 5)
+        Button(topframe, text = "Reload", command = self.load_samples).pack(side = LEFT, padx = 5, pady = 5)
 
         self.canvas = Canvas(root, bg = "#003e4d", width = 800, height = 480, scrollregion = (0, 0, 800000, 480))
         self.canvas.pack(fill = BOTH, expand = 1)
@@ -148,25 +125,40 @@ class Viewer:
         self.cursor_pos.set("Pos: %.0fµs" % 0.0)
         scale.set(pixel_per_microsecond)
 
-        root.bind("n", next_level_change)
+        root.bind("n", self.next_level_change)
         root.bind("q", lambda e: exit())
-        root.bind("r", lambda e: load_samples())
+        root.bind("r", lambda e: self.load_samples())
 
     def track_mouse(self, event):
         self.canvas.set_cursor_line(self.canvas.canvasx(event.x), 0, self.canvas.canvasx(event.x))
         self.cursor_pos.set("Pos: %.0fµs" % ((self.canvas.canvasx(event.x) * 100 /  pixel_per_microsecond)))
 
+    def load_samples():
+        None
+
+    def next_level_change(self, event):
+        smallest_x = int(self.canvas['width'])
+        n = -1
+        edge = self.canvas.canvasx(0) + root.winfo_width()
+        for c in self.canvas.find_withtag(ALL):
+            x = self.canvas.coords(c)[0]
+            if x > edge and x < smallest_x:
+                smallest_x = x
+                n = c
+        if n != -1:
+            self.canvas.xview_moveto(canvas.coords(n)[0] / int(self.canvas['width']))
+
     def rescale_canvas(self, value):
         global pixel_per_microsecond
         old_scrollpos = self.canvas.canvasx(0) / int(self.canvas['width'])
         pixel_per_microsecond = float(value)
-        load_samples()
+        # load_samples()
         self.canvas.xview_moveto(old_scrollpos)
 
+root = Tk()
+
+analyzer = LogicAnalyzer()
+analyzer.load(sys.argv[1])
 viewer = Viewer(root)
-
-
-#for i in range(len(analyzer.channels)):
-#    plot(analyzer.channels[i], 0, i * 50 + 10, channel_color[i])
 
 root.mainloop()
